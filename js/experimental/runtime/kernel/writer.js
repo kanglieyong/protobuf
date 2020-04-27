@@ -11,6 +11,7 @@ const WireType = goog.require('protobuf.binary.WireType');
 const {POLYFILL_TEXT_ENCODING, checkFieldNumber, checkTypeUnsignedInt32, checkWireType} = goog.require('protobuf.internal.checks');
 const {concatenateByteArrays} = goog.require('protobuf.binary.uint8arrays');
 const {encode} = goog.require('protobuf.binary.textencoding');
+const {getTagLength} = goog.require('protobuf.binary.tag');
 
 /**
  * Returns a valid utf-8 encoder function based on TextEncoder if available or
@@ -300,6 +301,22 @@ class Writer {
   }
 
   /**
+   * Writes a sfixed64 value field to the buffer.
+   * @param {number} fieldNumber
+   */
+  writeStartGroup(fieldNumber) {
+    this.writeTag(fieldNumber, WireType.START_GROUP);
+  }
+
+  /**
+   * Writes a sfixed64 value field to the buffer.
+   * @param {number} fieldNumber
+   */
+  writeEndGroup(fieldNumber) {
+    this.writeTag(fieldNumber, WireType.END_GROUP);
+  }
+
+  /**
    * Writes a uint32 value field to the buffer as a varint without tag.
    * @param {number} value
    * @private
@@ -434,61 +451,9 @@ class Writer {
    */
   writeBufferDecoder(bufferDecoder, start, wireType) {
     this.closeAndStartNewBuffer_();
-    const dataLength = this.getLength_(bufferDecoder, start, wireType);
+    const dataLength = getTagLength(bufferDecoder, start, wireType);
     this.blocks_.push(
         bufferDecoder.subBufferDecoder(start, dataLength).asUint8Array());
-  }
-
-  /**
-   * Returns the length of the data to serialize. Returns -1 when a STOP GROUP
-   * is found.
-   * @param {!BufferDecoder} bufferDecoder
-   * @param {number} start
-   * @param {!WireType} wireType
-   * @return {number}
-   * @private
-   */
-  getLength_(bufferDecoder, start, wireType) {
-    switch (wireType) {
-      case WireType.VARINT:
-        bufferDecoder.setCursor(start);
-        bufferDecoder.skipVarint();
-        return bufferDecoder.cursor() - start;
-      case WireType.FIXED64:
-        return 8;
-      case WireType.DELIMITED:
-        const dataLength = bufferDecoder.getUnsignedVarint32At(start);
-        return dataLength + bufferDecoder.cursor() - start;
-      case WireType.START_GROUP:
-        return this.getGroupLength_(bufferDecoder, start);
-      case WireType.FIXED32:
-        return 4;
-      default:
-        throw new Error(`Invalid wire type: ${wireType}`);
-    }
-  }
-
-  /**
-   * Skips over fields until it finds the end of a given group.
-   * @param {!BufferDecoder} bufferDecoder
-   * @param {number} start
-   * @return {number}
-   * @private
-   */
-  getGroupLength_(bufferDecoder, start) {
-    // On a start group we need to keep skipping fields until we find a
-    // corresponding stop group
-    let cursor = start;
-    while (cursor < bufferDecoder.endIndex()) {
-      const tag = bufferDecoder.getUnsignedVarint32At(cursor);
-      const wireType = /** @type {!WireType} */ (tag & 0x07);
-      if (wireType === WireType.END_GROUP) {
-        return bufferDecoder.cursor() - start;
-      }
-      cursor = bufferDecoder.cursor() +
-          this.getLength_(bufferDecoder, bufferDecoder.cursor(), wireType);
-    }
-    throw new Error('No end group found');
   }
 
   /**

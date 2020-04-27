@@ -9,6 +9,7 @@ const BufferDecoder = goog.require('protobuf.binary.BufferDecoder');
 const WireType = goog.require('protobuf.binary.WireType');
 const {Field} = goog.require('protobuf.binary.field');
 const {checkCriticalElementIndex, checkCriticalState} = goog.require('protobuf.internal.checks');
+const {tagToWireType} = goog.require('protobuf.binary.tag');
 
 /**
  * Appends a new entry in the index array for the given field number.
@@ -24,16 +25,6 @@ function addIndexEntry(storage, fieldNumber, wireType, startIndex) {
   } else {
     storage.set(fieldNumber, Field.fromFirstIndexEntry(wireType, startIndex));
   }
-}
-
-/**
- * Returns wire type stored in a tag.
- * Protos store the wire type as the first 3 bit of a tag.
- * @param {number} tag
- * @return {!WireType}
- */
-function tagToWireType(tag) {
-  return /** @type {!WireType} */ (tag & 0x07);
 }
 
 /**
