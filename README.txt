@@ -25,7 +25,7 @@ If "make check" fails, you can still install, but it is likely that
 some features of this library will not work correctly on your system.
 Proceed at your own risk.
 
-Just make but or install, we can run "make all".
+Just make but not install, we can run "make all".
   $ make all
 
 "make install" may require superuser privileges.
